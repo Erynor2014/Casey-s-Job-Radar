@@ -1,4 +1,4 @@
-# Job Search Autopilot
+# The Job Search Autopilot
 
 A personal job search automation tool that aggregates listings from 11 sources daily, filters them against your criteria, rates them with Claude AI, and emails you a ranked digest each morning.
 
