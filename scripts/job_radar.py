@@ -444,28 +444,38 @@ DOMAIN_COMPANY_MAP: dict = {
 # PROFILE imported from config.py
 
 # QUOTES imported from config.py
-# Keep this list SHORT - only terms that are 100% unambiguous regardless of context.
-# Everything else gets passed to Claude, which can read context and make a better call.
-
-# FIX (code review): Changed from list to frozenset.
-# Only used for `term in HARD_DISQUALIFIERS` membership tests — frozenset gives
-# O(1) lookup vs O(n) list scan, and documents intent: these are unique, unordered terms.
+# ── HARD DISQUALIFIERS — CUSTOMISE FOR YOUR JOB SEARCH ──────────────────────
+#
+# Any job whose title OR description contains one of these terms is automatically
+# skipped before it reaches Claude. Use this for things you are 100% sure you
+# never want to see — regardless of any other context.
+#
+# Keep this list SHORT and unambiguous. If something is a "maybe", let Claude
+# decide — it can read context far better than a simple keyword match.
+#
+# HOW TO CUSTOMISE:
+#   Add terms specific to industries, roles, or contract types you want to skip.
+#   Each term is a case-insensitive substring match on the full job description.
+#
+# EXAMPLES BY SITUATION:
+#   Avoid crypto:         "blockchain", "web3", "cryptocurrency", "nft", "defi"
+#   Avoid consulting:     "on behalf of our client", "our client is seeking"
+#   Avoid specific tech:  "cobol", "mainframe"
+#   Avoid certain roles:  "sales engineer", "account executive"
+#   Avoid contract only:  "corp to corp", "c2c only", "w2 contract"
+#
 HARD_DISQUALIFIERS = frozenset([
-    # Crypto/blockchain - no legitimate fintech PM role needs these
-    "blockchain", "web3", "cryptocurrency", "crypto currency",
-    "digital assets", "programmable blockchain", "nft",
-    "decentralized finance", "smart contract",
-    # Staffing agency description phrases — recruiter posting on behalf of a client
-    "on behalf of our client",
-    "on behalf of a client",
-    "our client is looking",
-    "our client is seeking",
+    # Add your own hard disqualifiers here. Examples:
+    # "blockchain",
+    # "on behalf of our client",
+    # "corp to corp",
 ])
 
-# Separate regex-based disqualifiers that need word boundary matching
-# "defi" must be whole-word only - "define", "defined", "definitely" are NOT DeFi
-# "crypto" must be whole-word only - "cryptography", "cryptographic" are NOT crypto
-_HARD_DISQ_RE = re.compile(r"\bdefi\b|\bcrypto\b", re.IGNORECASE)
+# For terms that need whole-word matching (to avoid false positives on similar words),
+# add them here as a regex pattern. Leave empty if you don't need this.
+# Example: r"\bdefi\b|\bcrypto\b" would block "defi" and "crypto" as whole words
+# but NOT "define", "defined", "cryptography" etc.
+_HARD_DISQ_RE = re.compile(r"", re.IGNORECASE)
 
 def has_disqualifier(job):
     """
