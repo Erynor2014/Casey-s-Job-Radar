@@ -236,11 +236,15 @@ DEFAULT_TIER        = TIER_LOOK
 # from older Glassdoor estimates or truncated ranges that look below floor.
 # ATS jobs from these companies (salary=None) already pass through — this only affects
 # jobs where a search engine snippet incorrectly extracted a low salary number.
+# Companies exempt from description-extracted salary filtering.
+# Some companies pay well above MIN_SALARY for the relevant roles, but Brave/Tavily
+# search snippets sometimes surface truncated salary figures that look below your floor.
+# Add companies here that you know reliably pay above your salary floor so they are
+# never incorrectly dropped by the salary filter.
+# Format: lowercase company name substrings, e.g. "stripe", "wells fargo"
 SALARY_FLOOR_EXEMPT = frozenset([
-    "upstart", "stripe", "plaid", "mercury", "brex", "chime", "affirm",
-    "robinhood", "coinbase", "square", "block", "marqeta", "adyen",
-    "wells fargo", "capital one", "jpmorgan", "chase", "bank of america",
-    "citigroup", "citi", "goldman sachs", "morgan stanley",
+    # Add well-known high-paying employers in your target industry here.
+    # Examples: "stripe", "plaid", "mercury", "wells fargo", "capital one"
 ])
 
 # ── OUTPUT FILE PATHS ──────────────────────────────────────────────────────────
@@ -451,8 +455,6 @@ HARD_DISQUALIFIERS = frozenset([
     "blockchain", "web3", "cryptocurrency", "crypto currency",
     "digital assets", "programmable blockchain", "nft",
     "decentralized finance", "smart contract",
-    # FIX (see changelog): Parafin/OnePay type cash advance origination
-    "merchant cash advance",
     # Staffing agency description phrases — recruiter posting on behalf of a client
     "on behalf of our client",
     "on behalf of a client",
@@ -509,27 +511,17 @@ def has_disqualifier(job):
 # To add a new company: add "substring": ("category", "reason") — substring match,
 # case-insensitive. Keep substrings specific enough to avoid false positives.
 _COMPANY_PREFILTER = {
-    # ── Staffing agencies — never pass to Claude ──────────────────────────────
-    "jobgether":          ("staffing", "Jobgether posts on behalf of partner companies — staffing agency hard disqualifier"),
-    "it excel":           ("staffing", "IT Excel is a staffing/recruiting firm — hard disqualifier"),
-    "synersys":           ("staffing", "Synersys Technologies is a staffing firm — hard disqualifier"),
-    "ec1 partners":       ("staffing", "EC1 Partners is a recruiting firm — hard disqualifier"),
-    "pinnacle method":    ("staffing", "Pinnacle Method Consulting is a staffing firm — hard disqualifier"),
-    "medasource":         ("staffing", "Medasource is a staffing/contract placement firm — hard disqualifier"),
-    "akkodis":            ("staffing", "Akkodis is a contract staffing firm — hard disqualifier"),
-    "ramp talent":        ("staffing", "Ramp Talent is a recruiting firm — hard disqualifier"),
-    "davis talent":       ("staffing", "Davis Talent Search is a recruiting firm — hard disqualifier"),
-    "swooped":            ("staffing", "Swooped is a job aggregator/staffing platform — hard disqualifier"),
-    "themesoft":          ("staffing", "Themesoft is a staffing/contract placement firm — hard disqualifier"),
-    "solve it strategies":("staffing", "Solve IT Strategies is a staffing agency — hard disqualifier"),
-    "piper companies":    ("staffing", "Piper Companies is a staffing firm — hard disqualifier"),
-    "seneca creek":       ("staffing", "Seneca Creek ES is a recruiting/placement firm — hard disqualifier"),
-    "inizio partners":    ("staffing", "Inizio Partners is a staffing placement firm — hard disqualifier"),
-    "crossing hurdles":   ("staffing", "Crossing Hurdles is a recruiting/placement firm — hard disqualifier"),
-    "ladders":            ("aggregator", "Ladders is a job aggregator that reposts listings — not a direct employer"),
-    # ── Added from v1.6.0 review — description-phrase based ──────────────────
-    "insight global":     ("staffing", "Insight Global is a staffing/recruiting firm — hard disqualifier"),
-    "apex systems":       ("staffing", "Apex Systems is a staffing/IT recruiting firm — hard disqualifier"),
+    # ── Staffing agencies and aggregators — never pass to Claude ─────────────
+    # Add any agencies you keep seeing in your results that you want to block.
+    # Format: "company name substring": ("category", "reason string")
+    # The company name match is case-insensitive substring — keep it specific
+    # enough to avoid accidentally blocking real employers with similar names.
+    "jobgether":      ("staffing",   "Jobgether posts on behalf of partner companies"),
+    "insight global": ("staffing",   "Insight Global is a staffing/recruiting firm"),
+    "apex systems":   ("staffing",   "Apex Systems is a staffing/IT recruiting firm"),
+    "ladders":        ("aggregator", "Ladders is a job aggregator that reposts listings"),
+    # Add more as you encounter them:
+    # "your agency": ("staffing", "reason"),
 }
 
 def is_company_prefilter(job):
@@ -707,7 +699,7 @@ _CATEGORY_URL_FRAGMENTS = [
     "careers.pnc.com/global/en",          # PNC careers portal homepage
     "careers.bankofamerica.com/en-us",    # BofA careers search page
     "careers.bankofamerica.com/en-us/job-search",
-    # ── Non-US job boards - Casey only wants US remote or Raleigh NC ──
+    # ── Non-US job boards - only US remote or local metro area ──
     "totaljobs.com",          # UK job board
     "reed.co.uk",             # UK job board
     "cv-library.co.uk",       # UK job board
@@ -819,8 +811,32 @@ _NON_US_RE = re.compile(
 )
 
 # Regex to detect non-Raleigh / non-US cities embedded in job URLs
+
+# ── LOCATION FILTERS — CUSTOMISE FOR YOUR CITY ───────────────────────────────
+#
+# These two regexes control which jobs get filtered out as "onsite outside your
+# metro area." They work together:
+#
+#   _URL_CITY_RE  — scans the job URL for city slugs (e.g. /jobs/san-francisco/)
+#   _LOC_CITY_RE  — scans the location field for city names (e.g. "Seattle, WA")
+#
+# HOW TO CUSTOMISE:
+#   1. Remove any cities from the lists that are within your commutable metro area.
+#   2. Add any cities that are NOT in your metro that you want to filter out.
+#   3. The lists below are a reasonable starting point for a US-based remote-first
+#      job search — they catch the most common onsite city slugs on job boards.
+#
+# IMPORTANT: Jobs with "remote" in the title, location, or description are
+# always allowed through regardless of what these regexes match. These filters
+# only block jobs that appear to be onsite-only outside your target area.
+#
+# If you are fully remote and don't care about local roles at all, you can
+# simplify both regexes to just catch international/non-US locations and remove
+# all the US city entries.
+# ─────────────────────────────────────────────────────────────────────────────
+
 _URL_CITY_RE = re.compile(
-    # ── US non-Raleigh cities ─────────────────────────────────────────────────
+    # ── Major US metros (onsite roles here are outside most users' commute) ──
     r"new[-_]york|new%20york"
     r"|san[-_]francisco|san%20francisco"
     r"|los[-_]angeles|los%20angeles"
@@ -840,27 +856,23 @@ _URL_CITY_RE = re.compile(
     r"|jersey[-_]city|jersey%20city"
     r"|hoboken"
     r"|stamford"
-    r"|charlotte(?!sville)"  # Charlotte NC but not Charlottesville
+    r"|charlotte"
     r"|new[-_]jersey|new%20jersey"
     r"|connecticut"
-    # ── UK ────────────────────────────────────────────────────────────────────
+    # ── International ────────────────────────────────────────────────────────
     r"|london|manchester|birmingham|edinburgh|glasgow|leeds|bristol"
     r"|united[-_]kingdom|united%20kingdom"
-    # ── Western Europe ────────────────────────────────────────────────────────
     r"|berlin|munich|hamburg|frankfurt|amsterdam|rotterdam"
     r"|paris|madrid|barcelona|rome|milan|zurich|vienna|brussels"
     r"|stockholm|oslo|copenhagen|helsinki|dublin[-_]ireland|dublin%20ireland"
-    # ── Baltic / Eastern Europe ───────────────────────────────────────────────
     r"|tallinn|riga|vilnius|warsaw|prague|budapest|bucharest"
-    # ── Canada / Australia ────────────────────────────────────────────────────
     r"|toronto|vancouver|montreal|sydney|melbourne",
     re.IGNORECASE,
 )
 
-# Regex to detect non-Raleigh US cities in the job's location FIELD (not URL).
-# FIX (see changelog): ATS URLs (greenhouse.io/sofi/jobs/123) have no city slugs, so
-# _URL_CITY_RE misses them entirely. The location field is the reliable source for
-# ATS jobs - check it directly. Only triggers when remote is NOT in the location string.
+# Scans the job location field for city names (ATS jobs have no city in URL).
+# Same customisation rules as _URL_CITY_RE above — remove any cities near your
+# own metro, add cities you want to block.
 _LOC_CITY_RE = re.compile(
     # Bay Area
     r"\b(san francisco|menlo park|palo alto|san jose|mountain view|sunnyvale|redwood city)\b"
@@ -868,7 +880,7 @@ _LOC_CITY_RE = re.compile(
     r"|\b(new york|new york city|manhattan|brooklyn|jersey city|hoboken|stamford)\b"
     # Seattle area
     r"|\b(seattle|bellevue|kirkland|redmond)\b"
-    # Other major non-Raleigh US metros
+    # Other major US metros — remove any that are near your city
     r"|\bchicago\b"
     r"|\bboston\b"
     r"|\b(los angeles|west hollywood|santa monica|culver city)\b"
@@ -878,7 +890,7 @@ _LOC_CITY_RE = re.compile(
     r"|\batlanta\b"
     r"|\baustin\b"
     r"|\b(nashville|memphis)\b"
-    r"|\bcharlotte\b(?! st)"  # Charlotte NC - not Raleigh metro (~3h away)
+    r"|\bcharlotte\b"
     r"|\b(salt lake city|cottonwood heights)\b"
     r"|\bphoenix\b"
     r"|\bhouston\b"
@@ -887,8 +899,7 @@ _LOC_CITY_RE = re.compile(
     r"|\b(portland or|portland, or)\b"
     r"|\b(washington dc|washington, dc)\b"
     r"|\b(st louis|saint louis|kansas city)\b"
-    # State-prefixed format used by SoFi/others: "CA - San Francisco", "WA - Seattle"
-    # Match the state abbreviation when followed by a dash (location field convention)
+    # State abbreviation prefix format used by some ATS (e.g. "CA - San Francisco")
     r"|\b(ca|wa|ny|il|ma|tx|co|ga|fl|az|ut|or|mn|pa|tn)\s*-"
     r"|\bcalifornia\b|\b(washington state|washington, wa)\b",
     re.IGNORECASE,
@@ -1943,14 +1954,22 @@ def search_ats_companies():
     ]
 
     # ── Title keywords for filtering ──────────────────────────────────────────
+    # ── TARGET_TITLES: update this list for your target job titles ───────────
+    # The radar checks every ATS job title against this list.
+    # Any title that does NOT contain at least one of these keywords is skipped
+    # before any other filtering happens.
+    # Keep keywords lowercase and use partial matches — "product manager" will
+    # match "Senior Product Manager", "Lead Product Manager", etc.
+    # Examples for different roles:
+    #   Software engineer:  "software engineer", "software developer", "swe"
+    #   Data:               "data scientist", "data analyst", "machine learning"
+    #   Design:             "ux designer", "product designer", "ui designer"
     TARGET_TITLES = [
-        "product manager", "product owner", "product lead",
-        "principal product", "vp product", "head of product",
-        "business analyst", "product director", "avp product",
-        "customer experience manager", "customer experience director",
-        "digital experience", "experience owner",
-        "director of product", "group product", "staff product",
-        "technical product manager",
+        # Replace with keywords that match YOUR target job titles:
+        "product manager",
+        "product owner",
+        "business analyst",
+        # Add more keywords here...
     ]
 
     # Titles that contain a TARGET_TITLE keyword but are actually wrong roles
@@ -2686,23 +2705,23 @@ Return ONLY a JSON object with exactly these three fields:
   "salary": the salary range exactly as stated in the description (e.g. "$150,000-$180,000", "$160K", "up to $175K") - use null if no salary is mentioned anywhere in the description
 
 Tier guide:
-"Perfect Fit"  = 90-100% match. PM, PO, or BA role in digital banking, fintech, consumer-facing banking, payments, onboarding, authentication, or anything closely resembling Casey's work at Jenius Bank. Right seniority, right domain, no hard disqualifiers. This is the domain Casey knows best and enjoyed most.
+"Perfect Fit"  = 90-100% match. PM, PO, or BA role that aligns with the candidate's target domain and seniority. Right level, right domain, no hard disqualifiers. This is the strongest match category.
 "Good Fit"     = 70-90% match. Same strong PM/PO/BA skills but different domain (insurance, healthcare, SaaS, retail) OR minor differences in seniority or scope. Still a strong candidate - just needs to pitch the domain transfer.
-"Worth a Look" = 60-70% match. Title fits and Casey meets some or most of the skills, but it may be a stretch to land - different industry, slightly off seniority, or requires pitching the skillset differently. Worth applying if the role interests him.
+"Worth a Look" = 60-70% match. Title fits and the candidate meets some or most of the skills, but it may be a stretch to land - different industry, slightly off seniority, or requires pitching the skillset differently. Worth applying if the role interests them.
 "Skip"         = Anything else. No realistic chance, or a hard disqualifier is present. Rate as Skip ONLY if one of these is confirmed:
   - Managing direct reports - ONLY if the description explicitly requires prior people management experience as a must-have. Leading or coordinating a cross-functional team without direct reports is NOT a disqualifier.
-  - On-site or hybrid with required office attendance OUTSIDE the Raleigh NC metro area (Raleigh, Durham, Cary, RTP, Chapel Hill are all fine). Read carefully - if the description says "hybrid" or "in-person" or "on-site" and the location is NOT in the Raleigh NC metro area, Skip it. But if the description says "remote" as the primary arrangement and mentions in-person as optional or occasional, do NOT skip it. The key question is: would Casey be required to physically commute to an office outside Raleigh? IMPORTANT: If the word "Remote" appears in the job TITLE itself (e.g., "Senior PM (Remote)", "Remote - Senior PM"), treat the role as remote regardless of what the Location field shows. Job boards like Adzuna often populate Location with the company's registered office address even for fully remote roles.
+  - On-site or hybrid with required office attendance OUTSIDE the candidate's local metro area. Read carefully - if the description says "hybrid" or "in-person" or "on-site" and the location is outside the target metro, Skip it. But if the description says "remote" as the primary arrangement and mentions in-person as optional or occasional, do NOT skip it. IMPORTANT: If the word "Remote" appears in the job TITLE itself (e.g., "Senior PM (Remote)", "Remote - Senior PM"), treat the role as remote regardless of what the Location field shows. Job boards like Adzuna often populate Location with the company's registered office address even for fully remote roles.
   - Staffing agency or contract-to-hire placement. Skip any role posted by a recruiting or staffing firm (Kforce, CyberCoders, Avenue Code, 1872 Consulting, Robert Half, Insight Global, Randstad, TEKsystems, etc.) OR any role explicitly described as contract, temp, or C2H regardless of who posts it.
-  - Credit risk, underwriting, or loan origination as the PRIMARY function. IMPORTANT: "Servicing" and "collections" after origination (account management, payment plans, customer support for existing accounts) are NOT the same as origination or underwriting. Post-origination servicing is squarely in Casey's wheelhouse - do NOT skip it. Only skip if the role is about evaluating creditworthiness, approving loans, or originating new credit.
+  - Credit risk, underwriting, or loan origination as the PRIMARY function. IMPORTANT: "Servicing" and "collections" after origination (account management, payment plans, customer support for existing accounts) are NOT the same as origination or underwriting. Post-origination servicing is a valid target - do NOT skip it. Only skip if the role is about evaluating creditworthiness, approving loans, or originating new credit.
   - Compensation range is entirely below $150K (i.e. the TOP of the posted range is below $150K). A range like $140K-$180K or $120K-$155K should NOT be skipped - $150K falls within both those ranges. Only skip if the maximum listed salary is confirmed below $150K.
   - Crypto, blockchain, or web3 as core product focus
-  - AI product building as the PRIMARY function - Casey uses AI as a productivity tool but does NOT want to work on building AI tools, LLMs, ML models, or AI-native products. Skip if: the company's core product IS an AI platform/tool, or the role's primary focus is owning/building AI features, AI roadmap, or AI-powered products. Examples of Skip: "own our AI assistant roadmap", "build LLM-powered features", "lead AI product strategy for our platform", "PM for our machine learning products", company whose primary product is an AI tool or AI networking platform. Do NOT skip if: AI is mentioned only as a tool the team uses internally, or the role is a standard PM role at a company that happens to use AI.
+  - AI product building as the PRIMARY function. Skip if: the company's core product IS an AI platform/tool, or the role's primary focus is owning/building AI features, AI roadmap, or AI-powered products. Examples of Skip: "own our AI assistant roadmap", "build LLM-powered features", "lead AI product strategy for our platform", "PM for our machine learning products". Do NOT skip if: AI is mentioned only as a tool the team uses internally, or the role is a standard PM role at a company that happens to use AI.
   - Non-US remote role - if a company is headquartered outside the US and the description does not explicitly state the role is open to US-based remote candidates, Skip it. European, Baltic, and UK banks hiring remotely are typically hiring within their own region.
 
 IMPORTANT RATING NOTES:
-- Authentication, MFA, OTP, identity management, and consumer portal experience are CORE strengths for Casey, not just adjacent skills. Roles requiring IAM, authentication platform ownership, login/onboarding flows, or portal experience should be rated Perfect Fit or Good Fit, not downgraded.
-- If a JD lists a specific platform (Symitar, Salesforce, nCino, Jack Henry, etc.) as required - not preferred - and there is no evidence Casey has used it, that is a hard requirement gap. Rate it Worth a Look or Skip depending on how central the platform is, not Perfect Fit or Good Fit.
-- Earnest, Gainbridge, and Symetra are known companies Casey has specifically targeted and built resumes for. Roles at these companies in product management, portal experience, or digital banking should be rated at least Good Fit unless a confirmed hard disqualifier is present.
+- Authentication, MFA, OTP, identity management, and consumer portal experience listed in the PROFILE are CORE strengths. Roles requiring IAM, authentication platform ownership, login/onboarding flows, or portal experience should be rated Perfect Fit or Good Fit, not downgraded.
+- If a JD lists a specific platform as required - not preferred - and the candidate profile does not indicate experience with it, that is a hard requirement gap. Rate it Worth a Look or Skip depending on how central the platform is, not Perfect Fit or Good Fit.
+- Any companies explicitly listed in the candidate profile as priority targets should be rated at least Good Fit unless a confirmed hard disqualifier is present.
 
 CRITICAL RATING RULES - these override everything else:
 1. Missing salary is NEVER a reason to Skip or downgrade. Rate on title and domain fit. The candidate will look up salary themselves.
@@ -2843,10 +2862,12 @@ def clear_buffer():
 
 # ── LOCAL JOB DETECTOR ───────────────────────────────────────────────────────
 
-# RALEIGH_TERMS imported from config.py
+# RALEIGH_TERMS imported from config.py — set your own metro area cities there
 
-def is_local_raleigh(job):
-    """Returns True if the job appears to be on-site/hybrid in the Raleigh metro."""
+def is_local_metro(job):
+    """Returns True if the job appears to be on-site/hybrid in the user's local metro area.
+    Uses RALEIGH_TERMS from config.py — update that list with your own city and suburbs.
+    """
     loc = job.get("location", "").lower()
     desc = job.get("description", "").lower()
     combined = loc + " " + desc[:500]  # check location + top of description
@@ -2879,7 +2900,7 @@ def build_report_body(all_jobs, title):
     filtered   = [j for j in all_jobs if j.get("tier") == TIER_SKIP]
 
     # Split actionable into remote and local - compute once per job (not twice)
-    _is_local = {id(j): is_local_raleigh(j) for j in actionable}
+    _is_local = {id(j): is_local_metro(j) for j in actionable}
     local_jobs  = [j for j in actionable if _is_local[id(j)]]
     remote_jobs = [j for j in actionable if not _is_local[id(j)]]
 
@@ -2898,12 +2919,12 @@ def build_report_body(all_jobs, title):
     # ── Good morning greeting
     lines.append("─" * 50)
     if total_apply > 0:
-        lines.append(f"Good morning, Casey! ☀️  You have {total_apply} job{'s' if total_apply != 1 else ''} worth applying for today"
+        lines.append(f"Good morning! ☀️  You have {total_apply} job{'s' if total_apply != 1 else ''} worth applying for today"
                      + (f", plus {total_look} more worth a look." if total_look > 0 else "."))
     elif total_look > 0:
-        lines.append(f"Good morning, Casey! ☀️  Nothing perfect today, but {total_look} job{'s' if total_look != 1 else ''} worth a look.")
+        lines.append(f"Good morning! ☀️  Nothing perfect today, but {total_look} job{'s' if total_look != 1 else ''} worth a look.")
     else:
-        lines.append("Good morning, Casey! ☀️  Quiet day - nothing new worth your time today. Check back tomorrow.")
+        lines.append("Good morning! ☀️  Quiet day - nothing new worth your time today. Check back tomorrow.")
     lines.append("")
 
     # ── Motivational quote
@@ -2915,7 +2936,7 @@ def build_report_body(all_jobs, title):
     # ── Counts summary
     lines.append(f"Remote - ⭐ {perfect_remote} Perfect Fit  |  🟢 {good_remote} Good Fit  |  🟡 {look_remote} Worth a Look")
     if local_jobs:
-        lines.append(f"Raleigh NC - ⭐ {perfect_local} Perfect Fit  |  🟢 {good_local} Good Fit  |  🟡 {look_local} Worth a Look")
+        lines.append(f"Local / Hybrid - ⭐ {perfect_local} Perfect Fit  |  🟢 {good_local} Good Fit  |  🟡 {look_local} Worth a Look")
     lines.append(f"{len(filtered)} filtered out")
     lines.append("")
 
@@ -2964,10 +2985,10 @@ def build_report_body(all_jobs, title):
         lines.append("No remote Perfect Fit, Good Fit, or Worth a Look jobs today.")
         lines.append("")
 
-    # ── Raleigh NC local jobs section
+    # ── Local metro jobs section
     if local_jobs:
         lines.append("─" * 50)
-        lines.append("📍 RALEIGH NC - LOCAL / HYBRID")
+        lines.append("📍 LOCAL / HYBRID")
         lines.append("─" * 50)
         lines.append("")
         for job in sorted(local_jobs, key=lambda x: TIER_ORDER[x["tier"]]):
