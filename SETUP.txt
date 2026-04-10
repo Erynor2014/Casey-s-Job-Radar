@@ -1,5 +1,5 @@
 ================================================================================
-JOB RADAR - SETUP GUIDE
+JOB SEARCH AUTOPILOT - SETUP GUIDE
 ================================================================================
 
 A personal job search automation tool that searches 11 sources daily, rates
@@ -147,7 +147,7 @@ STEP 6 - SCHEDULE DAILY RUNS
 WINDOWS - Task Scheduler:
   1. Open Task Scheduler (search for it in the Start menu)
   2. Click "Create Basic Task"
-  3. Name: Job Radar
+  3. Name: Job Search Autopilot
   4. Trigger: Daily, at 7:00 AM (or whenever you want your morning email)
   5. Action: Start a program
   6. Program: python
@@ -322,7 +322,7 @@ If you find a company you want to track but are not sure of their ATS slug:
 Paste this into Claude or ChatGPT:
 
 ---
-I want to add [Company Name] to my job radar's ATS company list. The tool
+I want to add [Company Name] to my job search autopilot's ATS company list. The tool
 checks Greenhouse (boards.greenhouse.io/SLUG), Lever (jobs.lever.co/SLUG),
 and Ashby (jobs.ashbyhq.com/SLUG) automatically.
 
