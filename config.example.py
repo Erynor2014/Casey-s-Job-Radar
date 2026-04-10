@@ -1,5 +1,5 @@
 """
-config.example.py  —  Job Radar configuration template
+config.example.py  —  Job Search Autopilot configuration template
 
 Copy this file to scripts/config.py and fill in your details.
 scripts/config.py is gitignored and must never be committed.
