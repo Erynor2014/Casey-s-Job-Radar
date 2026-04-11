@@ -36,6 +36,8 @@ Your project folder should look like this:
   |-- scripts/
   |   |-- job_radar.py         (main radar - run this daily)
   |   |-- dashboard.py         (Kanban dashboard)
+  |   |--radar_shared.py        shared core logic (IDs, normalization, API safety, validation)
+
   |   `-- config.py            (YOUR personal config - never commit this)
   |-- config.example.py        (template to copy from)
   |-- .env.example             (API key template to copy from)
