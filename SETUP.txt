@@ -566,7 +566,7 @@ easy to diagnose with a fresh set of eyes.
 For questions about the code or commercial licensing:
 
   Email:  Casey.Chalfant@protonmail.com
-  GitHub: https://github.com/Erynor2014
+  GitHub: https://github.com/crchalfant
 
 
 ================================================================================
