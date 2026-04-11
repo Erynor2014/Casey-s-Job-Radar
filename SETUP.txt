@@ -297,9 +297,28 @@ Adding new features:
   "I'd like the email digest to also include the number of days since each
   job was posted. Can you add that to the email formatting in job_radar.py?"
 
-Debugging:
-  "I'm getting this error when I run job_radar.py: [paste error]. Here is the
-  relevant section of the code: [paste code]. What is wrong and how do I fix it?"
+Debugging a crash:
+  "I ran python scripts/job_radar.py --run and got this error:
+
+  [paste the full error message here]
+
+  Here is the last 20 lines of console output before the crash:
+
+  [paste the console output here]
+
+  What is wrong and how do I fix it? Here is the relevant section of
+  job_radar.py if it helps: [paste the section around the line number
+  mentioned in the error]"
+
+Debugging quiet days (no jobs in the email):
+  "The radar ran and sent a quiet day email — 0 jobs made it through. Here
+  is the filter breakdown from the console output:
+
+  [paste the filter breakdown lines]
+
+  My target roles are [your roles]. My location setup is remote nationwide
+  OR on-site in [your city]. What is likely causing everything to be filtered
+  and what should I adjust?"
 
 --------------------------------------------------------------------------------
 
