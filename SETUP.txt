@@ -565,8 +565,24 @@ easy to diagnose with a fresh set of eyes.
 
 For questions about the code or commercial licensing:
 
-  Email:  Casey.Chalfant@protonmail.com
+  Email:  casey.chalfant@protonmail.com
   GitHub: https://github.com/crchalfant
 
 
 ================================================================================
+
+SHARED MODULE (NEW)
+===================
+
+This project now includes a shared module:
+  scripts/radar_shared.py
+
+You do not need to configure this file, but it is important to understand:
+
+- It handles job ID generation and normalization
+- It ensures dashboard and radar stay in sync
+- It improves API reliability and error handling
+
+DO NOT duplicate logic from this file in other parts of the codebase.
+Always import from radar_shared instead.
+
