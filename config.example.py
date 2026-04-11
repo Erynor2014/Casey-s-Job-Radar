@@ -20,7 +20,7 @@ Required environment variables (set in .env or system environment):
 from datetime import date
 
 # ── SALARY FLOOR ──────────────────────────────────────────────────────────────
-MIN_SALARY = 100000  # set this to your minimum acceptable annual salary
+MIN_SALARY = 100  # set this to your minimum acceptable annual salary
 
 # ── VACATION MODE ─────────────────────────────────────────────────────────────
 # Jobs are buffered during [VACATION_START, VACATION_END) and a single digest
