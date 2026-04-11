@@ -101,7 +101,7 @@ to do this.
 The key things to update:
 
   PROFILE           Your name, current role, target roles, and career summary
-  MIN_SALARY        Your minimum acceptable salary (number, e.g. 150000)
+  MIN_SALARY        Your minimum acceptable salary (number, e.g. 100000 for $100K)
   RALEIGH_TERMS     Your city and surrounding metro area names
   COMPANIES         ATS company slugs for employers you want to track directly
   VACATION_START    Set to a past date if you are not on vacation
@@ -164,15 +164,126 @@ MAC/LINUX - Cron job:
   Save and exit.
 
 
+
+================================================================================
+WHAT FILTERS CAN YOU CUSTOMISE?
+================================================================================
+
+The radar has several filtering layers you can tune. Here is what each one
+does and where to find it:
+
+SALARY FLOOR
+  File: scripts/config.py — variable: MIN_SALARY
+  Set this to your minimum acceptable annual salary as a plain number with no
+  commas or dollar sign (e.g. 100000 for $100K). Jobs with a confirmed salary
+  range entirely below this are filtered out. Jobs with no salary listed always
+  pass through — the radar never drops a job just because salary is unlisted.
+
+LOCATION FILTER — CITIES TO BLOCK
+  File: scripts/job_radar.py — variables: _URL_CITY_RE and _LOC_CITY_RE
+  Two regex lists that detect when a job requires onsite attendance in a city
+  outside your metro. They come pre-loaded with major US metros and
+  international cities. To customise:
+    - Remove any cities that are within your commutable area
+    - Add any cities you want to block that aren't listed
+  Jobs with "remote" anywhere in the title or description always pass through
+  regardless of what these lists contain.
+
+YOUR LOCAL METRO AREA
+  File: scripts/config.py — variable: RALEIGH_TERMS
+  A set of city and suburb names that define your local commutable area. The
+  radar uses this to identify local hybrid/onsite roles and show them in a
+  separate section of your daily email. Replace the example values with your
+  own city and nearby suburbs.
+
+HARD DISQUALIFIERS (auto-Skip before Claude)
+  File: scripts/job_radar.py — list: HARD_DISQUALIFIERS
+  Phrases that automatically Skip a job before it reaches Claude. Common
+  entries include staffing agency language ("on behalf of our client"),
+  contract role signals ("C2C", "corp to corp"), and unwanted domains
+  ("crypto", "blockchain"). Add or remove entries to match what you never want
+  to see in your inbox.
+
+STAFFING AGENCY BLOCKLIST
+  File: scripts/job_radar.py — list: _COMPANY_PREFILTER
+  Known staffing and recruiting firms whose listings are skipped automatically.
+  Add the name of any agency you keep seeing that you want to block.
+
+JOB TITLE FILTER
+  File: scripts/job_radar.py — list: TARGET_TITLES (inside search functions)
+  Controls which job titles are considered relevant when checking ATS boards.
+  Add or remove titles to match your target roles.
+
+CLAUDE RATING PROMPT
+  File: scripts/job_radar.py — search for: "Perfect Fit" = 90-100%
+  The most powerful customisation. The tier definitions and hard disqualifier
+  rules are plain English — edit them to describe your own situation. See
+  Prompt 4 in the AI CUSTOMISATION section below for a ready-made prompt to
+  help you do this with Claude or ChatGPT.
+
+================================================================================
+MAKING IT YOURS — VIBE CODE YOUR WAY
+================================================================================
+
+This tool is designed to be customised to your specific job search. The
+filters, search queries, company list, and rating logic are all plain text
+or simple Python lists — readable and editable even if you are not a developer.
+
+The easiest way to personalise it is to upload the files directly into
+Claude (claude.ai) or ChatGPT (chatgpt.com) and describe what you want.
+You don't need to understand every line of code. Just tell the AI what to
+change and it handles the syntax. This is sometimes called "vibe coding" —
+you drive with plain English, the AI does the editing.
+
+HOW TO DO IT
+  1. Go to claude.ai or chatgpt.com
+  2. Upload job_radar.py and config.example.py as file attachments
+  3. Paste one of the prompts below (fill in your details)
+  4. Copy the updated code back into your files and run it
+
+You can do multiple rounds — start with the basics (profile, city, titles)
+and iterate from there. The AI can also help you debug if something goes
+wrong, add new features, or explain what any part of the code does.
+
+QUICK-START VIBE CODE PROMPTS
+
+Getting set up for a different role type:
+  "I've attached job_radar.py and config.example.py. I'm a [your role] looking
+  for [target roles] in the [your city] area. Can you update TARGET_TITLES,
+  set RALEIGH_TERMS to match [your metro area], and rewrite the PROFILE block
+  to describe my background: [brief summary of your experience]?"
+
+Adding hard filters:
+  "I want to automatically skip jobs that mention [thing you hate], [industry
+  you don't want], and any contract positions. Can you add these to
+  HARD_DISQUALIFIERS in job_radar.py and explain what each one does?"
+
+Adding companies:
+  "Can you help me find the Greenhouse, Lever, and Ashby ATS slugs for these
+  companies and add them to the COMPANIES list in config.example.py: [list]"
+
+Rewriting the rating prompt for your field:
+  "The Claude rating prompt in job_radar.py currently describes a product
+  manager. I'm a [your role]. Can you rewrite the Perfect Fit, Good Fit,
+  Worth a Look, and Skip tier definitions for my situation? My target roles
+  are [roles]. My core strengths are [strengths]. Things I won't do: [list]."
+
+Adding new features:
+  "I'd like the email digest to also include the number of days since each
+  job was posted. Can you add that to the email formatting in job_radar.py?"
+
+Debugging:
+  "I'm getting this error when I run job_radar.py: [paste error]. Here is the
+  relevant section of the code: [paste code]. What is wrong and how do I fix it?"
+
+--------------------------------------------------------------------------------
+
 ================================================================================
 CUSTOMIZING YOUR CONFIG WITH AI
 ================================================================================
 
-The config.py file controls everything about how the radar searches for and
-rates jobs. The easiest way to customize it is to use Claude or ChatGPT.
-
-Below are copy-paste prompts you can use. Just fill in the parts in [brackets]
-and paste them directly into Claude (claude.ai) or ChatGPT (chatgpt.com).
+Below are more detailed prompts for each specific part of the tool.
+Fill in the parts in [brackets] and paste directly into Claude or ChatGPT.
 
 
 --------------------------------------------------------------------------------
@@ -234,7 +345,7 @@ I need query lists for these variables:
   BRAVE_QUERIES      (8-12 queries, written like natural search phrases)
   TAVILY_QUERIES     (8-12 queries, written like natural search phrases)
   LI_REMOTE_QUERIES  (8-12 short keyword queries for LinkedIn remote searches)
-  LI_RALEIGH_QUERIES (5-8 queries that include my city name for local searches)
+  LI_RALEIGH_QUERIES (5-8 queries that include your city name for local searches)
 
 Please write these as Python lists I can paste directly into my config.py.
 ---
@@ -391,7 +502,7 @@ A: Yes. Each run creates its own output file with a timestamp, so multiple
 
 Q: How do I change the salary floor?
 A: Change MIN_SALARY in scripts/config.py. It is a number without commas
-   or dollar signs (e.g. 150000 for $150K).
+   or dollar signs (e.g. 100000 for $100K).
 
 Q: The dashboard shows old jobs that I have already seen - is this normal?
 A: Yes, the dashboard shows the last 3 runs worth of jobs. Jobs you have
