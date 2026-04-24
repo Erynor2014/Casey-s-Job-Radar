@@ -408,97 +408,35 @@ def is_company_prefilter(job):
 # ── TITLE PRE-FILTER ─────────────────────────────────────────────────────────
 # Catches clearly wrong roles and known staffing agencies before Claude sees them.
 
+
+# ── HOW TO CUSTOMISE _WRONG_TITLE_RE ─────────────────────────────────────────
+#
+# This regex filters out job titles that don't match your target role before
+# Claude ever sees them — saving API credits on obvious mismatches.
+#
+# HOW TO FILL THIS IN:
+#   1. Think about seniority levels you don't want (e.g. intern, associate,
+#      SVP/C-suite if they're out of reach).
+#   2. Think about adjacent functions that share keywords with your role but
+#      aren't what you do (e.g. if you're a PM, you probably don't want
+#      "sales manager", "software engineer", "product designer", etc.).
+#   3. Add one pattern per line as a raw string fragment joined with r"|...".
+#   4. Use \b word boundaries to avoid partial matches (e.g. \bsales\b won't
+#      match "wholesale").
+#   5. Test with: python -c "import re; print(bool(_WRONG_TITLE_RE.search('your title here')))"
+#
+# EXAMPLES (uncomment and adapt):
+#   r"^associate product (manager|owner)\b"   # too junior
+#   r"|\bintern(ship)?\b"
+#   r"|\b(svp|senior vice president)\b"       # too senior
+#   r"|\bsoftware (engineer|developer)\b"     # wrong function
+#   r"|\bproduct designer\b"                  # wrong function
+#   r"|\bdata analyst\b"                      # wrong function
+#   r"|\bsales (manager|executive|rep)\b"     # wrong function
+#
+# ─────────────────────────────────────────────────────────────────────────────
 _WRONG_TITLE_RE = re.compile(
-    # ── Wrong seniority / level ───────────────────────────────────────────────
-    r"^associate product (manager|owner)\b"      # junior level
-    r"|entry.?level\b"
-    r"|\bintern(ship)?\b"
-    r"|\b(svp|senior vice president)\b"          # C-suite too senior
-    r"|\bchief (executive|financial|operating|marketing|revenue)\b"
-    r"|\bassociate director\b"
-    # ── Wrong function — sales ────────────────────────────────────────────────
-    r"|\b(sales|marketing) (manager|director|executive|rep|consultant|account)\b"
-    r"|\baccount executive\b"
-    r"|\bsales (lead|executive|manager|rep|representative|development)\b"
-    r"|\b(sdr|bdr|account executive|sales development)\b"
-    r"|\bregional sales lead\b"
-    r"|\bkey account manager\b"
-    r"|\bpartnership sales manager\b"
-    r"|\bsenior account executive\b"
-    r"|\bprofessional sales representative\b"
-    r"|\bsenior sales representative\b"
-    r"|\bsales representative\b"
-    r"|\bfield sales\b"
-    r"|\barea business manager\b"
-    r"|\bbusiness development representative\b"
-    # ── Wrong function — customer support / success ───────────────────────────
-    r"|\bcustomer (service|success|care) (rep|representative|specialist|associate|coordinator|manager|operations)\b"
-    r"|\bcustomer experience (associate|representative|specialist|rep|coordinator)\b"
-    r"|\bclient success\b"
-    r"|\bcustomer success manager\b"
-    r"|\bcustomer service representative\b"
-    r"|\bcontact center rep\b"
-    r"|\bbilling success manager\b"
-    # ── Wrong function — engineering ──────────────────────────────────────────
-    r"|\b(backend|frontend|software|engineering) (manager|lead|director)\b"
-    r"|\bsoftware (engineer|developer)\b"
-    r"|\bfrontend (engineer|developer)\b"
-    r"|\bfront.end (engineer|developer)\b"
-    r"|\bbackend (engineer|developer)\b"
-    r"|\bfull.?stack (engineer|developer)\b"
-    r"|\bproduct engineer\b"
-    r"|\blead product engineer\b"
-    r"|\bdevice design engineer\b"
-    r"|\bsales engineer\b"
-    r"|\bsolutions engineer\b"
-    r"|\bsupport engineer\b"
-    r"|\bengineering manager\b"
-    r"|\bhardware r.?d\b"
-    # ── Wrong function — design / research ───────────────────────────────────
-    r"|\bproduct designer\b"
-    r"|\bproduct design(er)?\b"
-    r"|\bdesign researcher\b"
-    r"|\bgraphic designer\b"
-    # ── Wrong function — marketing ────────────────────────────────────────────
-    r"|\bproduct marketing\b"
-    r"|\bdigital marketing\b"
-    # ── Wrong function — recruiting / HR ─────────────────────────────────────
-    r"|\btalent acquisition\b"
-    r"|\bdirector.*talent acquisition\b"
-    r"|\b(coordinator|negotiator|recruiter)\b"
-    # ── Wrong function — data / analytics ────────────────────────────────────
-    r"|\bdata analyst\b"
-    r"|\bquantitative analyst\b"
-    r"|\bqa analyst\b"
-    r"|\bmaster data management\b"
-    # ── Wrong function — operations / misc ───────────────────────────────────
-    r"|^project manager\b"
-    r"|\belectrical products\b"
-    r"|supply chain\b"
-    r"|\bbusiness owner\b"
-    r"|\b(games?|gaming|esports) (product|title|portfolio|manager)\b"
-    r"|\breal estate\b"
-    r"|\bsecurity (manager|guard|officer)\b"
-    r"|\bcommand center\b"
-    r"|\bai trainer\b"
-    r"|\b(junior|associate) client partner\b"
-    r"|\bindependent operator\b"
-    r"|\bsmb owner\b"
-    r"|\benterprise (billing|sales) (success|executive)\b"
-    r"|\bsenior client delivery\b"
-    r"|\bmanagement consultant\b"
-    r"|^entrepreneur\b"
-    r"|\bfranchise\b"
-    r"|program manager,?\s+sales\b"
-    r"|\bbusiness consultant\b"
-    r"|\bteam lead.*command\b"
-    r"|\bowner operator\b"
-    r"|\boperations director\b"
-    r"|\bservice manager\b"
-    r"|\bimplementation specialist\b"
-    r"|\bvacation specialist\b"
-    r"|\bsenior independent\b"
-    r"|\bproduct security engineer\b",
+    r"(?!)",   # placeholder — matches nothing; replace with your own patterns
     re.IGNORECASE,
 )
 
@@ -625,40 +563,30 @@ _EXPIRED_RE = re.compile(
     re.IGNORECASE,
 )
 
+
+# ── HOW TO CUSTOMISE _NON_US_RE ──────────────────────────────────────────────
+#
+# This regex filters out jobs located outside the US. It scans the location
+# field (and description for non-ATS sources).
+#
+# Add any international cities or countries you want to block.
+# If you want to ALLOW a specific international location, simply don't include it.
+#
+# FORMAT: r"\bcity name\b" or r"\bcountry\b" joined with r"|..."
+# Use \b word boundaries to avoid partial matches.
+#
+# EXAMPLES (uncomment and adapt):
+#   r"\b(london|manchester|birmingham)\b|\bunited kingdom\b|\buk\b(?! based remote)"
+#   r"|\b(toronto|vancouver|montreal)\b|\bcanada\b"
+#   r"|\b(sydney|melbourne|brisbane)\b|\baustralia\b|\bnew zealand\b"
+#   r"|\b(berlin|munich|amsterdam|paris|rome|zurich|dublin)\b"
+#   r"|\b(tokyo|singapore|hong kong|bangalore|mumbai)\b|\bindia\b|\bjapan\b"
+#   r"|\bbrazil\b|\bmexico\b(?! remote)|\bargentina\b"
+#   r"|^emea$|\bemea\b|^eu$|^europe$|\beurope\b(?! remote)"
+#
+# ─────────────────────────────────────────────────────────────────────────────
 _NON_US_RE = re.compile(
-    # UK
-    r"\b(london|manchester|birmingham|edinburgh|glasgow|leeds|bristol|liverpool|sheffield|cambridge|oxford)\b"
-    r"|\bunited kingdom\b|\buk\b(?! based remote)|\bengland\b|\bscotland\b|\bwales\b|\bnorthern ireland\b"
-    # Canada
-    r"|\b(toronto|vancouver|montreal|ottawa|calgary|edmonton|winnipeg)\b|\bcanada\b"
-    # Australia / NZ
-    r"|\b(sydney|melbourne|brisbane|perth|adelaide|auckland|wellington)\b|\baustralia\b|\bnew zealand\b"
-    # Western Europe
-    r"|\b(berlin|munich|hamburg|frankfurt|cologne|amsterdam|rotterdam|paris|lyon|madrid|barcelona|rome|milan|zurich|vienna|brussels|stockholm|oslo|copenhagen|helsinki|dublin)\b"
-    # Baltic / Eastern Europe
-    r"|\b(tallinn|riga|vilnius|warsaw|prague|budapest|bucharest|sofia|zagreb|bratislava)\b"
-    r"|\bestonia\b|\blatvia\b|\blithuania\b|\bpoland\b|\bczech\b|\bhungary\b|\bromania\b"
-    # Nordic
-    r"|\bsweden\b|\bnorway\b|\bdenmark\b|\bfinland\b|\biceland\b"
-    # Asia
-    r"|\b(singapore|hong kong|shanghai|beijing|tokyo|seoul|bangalore|mumbai|new delhi|hyderabad)\b"
-    r"|\bindia\b|\bjapan\b|\bsouth korea\b|\bchina\b"
-    # Middle East - FIX (see changelog): Tel Aviv/Israel were missing (Melio, Lemonade, Payoneer)
-    r"|\b(tel aviv|tlv|herzliya|haifa|jerusalem)\b|\bisrael\b"
-    # Latin America - FIX (see changelog): São Paulo/Brazil were missing (Adyen LATAM)
-    r"|\b(são paulo|sao paulo|rio de janeiro|bogota|mexico city|ciudad de mexico|buenos aires|santiago|lima)\b"
-    r"|\bbrazil\b|\bmexico\b(?! remote)|\bcolombia\b|\bargentina\b|\bchile\b|\bperu\b"
-    # Southern Europe - FIX (see changelog): Portugal/Spain missing (Complyadvantage Lisbon, Securitize Spain)
-    r"|\b(lisbon|porto|madrid|barcelona|seville)\b|\bportugal\b|\bspain\b"
-    # Regions used as location labels - FIX (see changelog): EMEA/EU job boards (Deel, Lemonade EU)
-    # Matched only when standing alone or at boundaries so we do not catch "eure" etc.
-    r"|^emea$|\bemea\b|^eu$|^europe$|\beurope\b(?! remote)"
-    # Added 2026-04-02: WeWorkRemotely international companies slipping through
-    r"|\bphilippines\b|\bmanila\b|\bmetro manila\b"
-    r"|\bukraine\b|\bkyiv\b|\bkharkiv\b"
-    r"|\bswitzerland\b|\bgeneva\b|\bbern\b"
-    r"|\bbelgium\b|\bbrussels\b|\bantwerp\b"
-    r"|\bcagayan de oro\b",
+    r"(?!)",   # placeholder — matches nothing; replace with your own patterns
     re.IGNORECASE,
 )
 
@@ -688,37 +616,32 @@ _NON_US_RE = re.compile(
 # ─────────────────────────────────────────────────────────────────────────────
 
 _URL_CITY_RE = re.compile(
-    # ── Major US metros (onsite roles here are outside most users' commute) ──
-    r"new[-_]york|new%20york"
-    r"|san[-_]francisco|san%20francisco"
-    r"|los[-_]angeles|los%20angeles"
-    r"|chicago"
-    r"|boston"
-    r"|seattle"
-    r"|austin"
-    r"|atlanta"
-    r"|denver"
-    r"|minneapolis"
-    r"|philadelphia"
-    r"|phoenix"
-    r"|houston"
-    r"|dallas"
-    r"|miami"
-    r"|washington[-_]dc|washington%20dc"
-    r"|jersey[-_]city|jersey%20city"
-    r"|hoboken"
-    r"|stamford"
-    r"|charlotte"
-    r"|new[-_]jersey|new%20jersey"
-    r"|connecticut"
-    # ── International ────────────────────────────────────────────────────────
-    r"|london|manchester|birmingham|edinburgh|glasgow|leeds|bristol"
-    r"|united[-_]kingdom|united%20kingdom"
-    r"|berlin|munich|hamburg|frankfurt|amsterdam|rotterdam"
-    r"|paris|madrid|barcelona|rome|milan|zurich|vienna|brussels"
-    r"|stockholm|oslo|copenhagen|helsinki|dublin[-_]ireland|dublin%20ireland"
-    r"|tallinn|riga|vilnius|warsaw|prague|budapest|bucharest"
-    r"|toronto|vancouver|montreal|sydney|melbourne",
+    # ── HOW TO CUSTOMISE ─────────────────────────────────────────────────────
+    # This regex scans job URLs for city slugs (e.g. /jobs/san-francisco/).
+    # Add cities you want to BLOCK (onsite roles you can't commute to).
+    # Remove cities that ARE within your commutable metro area.
+    #
+    # FORMAT: use URL-slug style with [-_] or %20 for spaces, e.g.:
+    #   r"new[-_]york|new%20york"
+    #   r"|san[-_]francisco|san%20francisco"
+    #   r"|chicago"
+    #
+    # Jobs with "remote" in the title/location/description always pass through
+    # regardless of what this regex matches.
+    # ─────────────────────────────────────────────────────────────────────────
+    #
+    # EXAMPLE ENTRIES (uncomment and adapt):
+    #   r"new[-_]york|new%20york"
+    #   r"|san[-_]francisco|san%20francisco"
+    #   r"|los[-_]angeles|los%20angeles"
+    #   r"|chicago"
+    #   r"|boston"
+    #   r"|seattle"
+    #   r"|austin"
+    #   r"|london|manchester|birmingham"
+    #   r"|berlin|munich|amsterdam|paris"
+    #   r"|toronto|vancouver|montreal|sydney|melbourne"
+    r"(?!)",   # placeholder — matches nothing; replace with your own patterns
     re.IGNORECASE,
 )
 
@@ -726,34 +649,39 @@ _URL_CITY_RE = re.compile(
 # Same customisation rules as _URL_CITY_RE above — remove any cities near your
 # own metro, add cities you want to block.
 _LOC_CITY_RE = re.compile(
-    # Bay Area
-    r"\b(san francisco|menlo park|palo alto|san jose|mountain view|sunnyvale|redwood city)\b"
-    # NYC / NJ
-    r"|\b(new york|new york city|manhattan|brooklyn|jersey city|hoboken|stamford)\b"
-    # Seattle area
-    r"|\b(seattle|bellevue|kirkland|redmond)\b"
-    # Other major US metros — remove any that are near your city
-    r"|\bchicago\b"
-    r"|\bboston\b"
-    r"|\b(los angeles|west hollywood|santa monica|culver city)\b"
-    r"|\b(dallas|fort worth|frisco|westlake tx)\b"
-    r"|\b(denver|boulder)\b"
-    r"|\bmiami\b"
-    r"|\batlanta\b"
-    r"|\baustin\b"
-    r"|\b(nashville|memphis)\b"
-    r"|\bcharlotte\b"
-    r"|\b(salt lake city|cottonwood heights)\b"
-    r"|\bphoenix\b"
-    r"|\bhouston\b"
-    r"|\bminneapolis\b"
-    r"|\bphiladelphia\b"
-    r"|\b(portland or|portland, or)\b"
-    r"|\b(washington dc|washington, dc)\b"
-    r"|\b(st louis|saint louis|kansas city)\b"
-    # State abbreviation prefix format used by some ATS (e.g. "CA - San Francisco")
-    r"|\b(ca|wa|ny|il|ma|tx|co|ga|fl|az|ut|or|mn|pa|tn)\s*-"
-    r"|\bcalifornia\b|\b(washington state|washington, wa)\b",
+    # ── HOW TO CUSTOMISE ─────────────────────────────────────────────────────
+    # This regex scans the job location field for city names.
+    # Used for ATS jobs (Greenhouse, Lever, Ashby) that don't have city slugs
+    # in their URLs.
+    #
+    # Add cities you want to BLOCK (onsite roles outside your commute range).
+    # Remove cities that ARE within your commutable metro area.
+    #
+    # FORMAT: use \b word boundaries, e.g.:
+    #   r"\b(san francisco|palo alto|mountain view)\b"   # Bay Area
+    #   r"|\b(new york|manhattan|brooklyn|jersey city)\b" # NYC
+    #   r"|\bchicago\b"
+    #   r"|\bseattle\b"
+    #
+    # TIP: Group nearby suburbs together in one pattern for readability.
+    # TIP: Include state-prefix formats some ATS use, e.g. r"|\bca\s*-"
+    #
+    # Jobs with "remote" in the location field always pass through regardless.
+    # ─────────────────────────────────────────────────────────────────────────
+    #
+    # EXAMPLE ENTRIES (uncomment and adapt):
+    #   r"\b(san francisco|menlo park|palo alto|san jose|mountain view|sunnyvale)\b"
+    #   r"|\b(new york|manhattan|brooklyn|jersey city|hoboken|stamford)\b"
+    #   r"|\b(seattle|bellevue|kirkland|redmond)\b"
+    #   r"|\bchicago\b"
+    #   r"|\bboston\b"
+    #   r"|\b(los angeles|santa monica|culver city)\b"
+    #   r"|\baustin\b"
+    #   r"|\bmiami\b"
+    #   r"|\batlanta\b"
+    #   r"|\b(washington dc|washington, dc)\b"
+    #   r"|\b(ca|wa|ny|il|ma|tx|co|ga|fl|az|or|mn|pa)\s*-"  # state-prefix ATS format
+    r"(?!)",   # placeholder — matches nothing; replace with your own patterns
     re.IGNORECASE,
 )
 
